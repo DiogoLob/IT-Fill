@@ -8,20 +8,29 @@ import os
 class PDFGenerator(FPDF):
     def header(self):
         if app.logo_path:
-            self.image(app.logo_path, x=10, y=8, w=30)  # Alinhamento da logo
-        self.set_font("Arial", "B", 16)
-        self.cell(0, 25, "Instrução de Trabalho Padrão", border=1, align="C", ln=True)
+            self.image(app.logo_path, x=10, y=8, w=30)  # Logo da empresa
+        self.set_font("Arial", "B", 14)
+        self.cell(0, 10, "Instrução de Trabalho (IT)", border=0, ln=True, align="C")
+        self.set_font("Arial", "B", 12)
+        self.cell(0, 10, f"Procedimento: {app.nome_procedimento.get()}", border=0, ln=True, align="C")
+        self.cell(0, 10, f"Versão: {app.versao_procedimento.get()} | Data de Emissão: {datetime.now().strftime('%d/%m/%Y')}", border=0, ln=True, align="C")
         self.ln(10)
 
     def footer(self):
         self.set_y(-15)
         self.set_font("Arial", "I", 10)
-        self.cell(0, 10, f"Data de Geração: {datetime.now().strftime('%d/%m/%Y')}", align="R")
+        self.cell(0, 10, f"Página {self.page_no()}/{{nb}}", align="C")
 
-    def add_procedure_info(self, procedure_name, tools, epis):
+    def add_procedure_info(self, procedure_name, version, tools, epis, responsavel):
+        self.set_font("Arial", "B", 12)
+        self.cell(0, 10, "Informações Gerais do Procedimento", ln=True, border=1)
         self.set_font("Arial", size=12)
         self.cell(50, 10, "Procedimento:", border=1)
         self.cell(0, 10, procedure_name, border=1, ln=True)
+        self.cell(50, 10, "Versão:", border=1)
+        self.cell(0, 10, version, border=1, ln=True)
+        self.cell(50, 10, "Responsável:", border=1)
+        self.cell(0, 10, responsavel, border=1, ln=True)
         self.cell(50, 10, "Ferramentas Utilizadas:", border=1)
         self.cell(0, 10, tools, border=1, ln=True)
         self.cell(50, 10, "EPIs Utilizados:", border=1)
@@ -33,17 +42,16 @@ class PDFGenerator(FPDF):
         self.cell(0, 10, f"Etapa {stage_number}: {stage_title}", ln=True, border=1)
         self.ln(5)
         self.set_font("Arial", size=12)
-        self.multi_cell(100, 10, stage_description, border=1)  # Descrição
+        self.multi_cell(0, 10, stage_description, border=1)
         if stage_image:
-            self.image(stage_image, x=120, y=self.get_y() - 120, w=70)  # Imagem à direita
+            self.image(stage_image, x=10, y=self.get_y(), w=180)
         self.ln(10)
-
 
 class GeradorInstrucaoTrabalho(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Gerador de Instrução de Trabalho")
-        self.geometry("600x500")
+        self.title("Gerador de Instrução de Trabalho (ISO 9001)")
+        self.geometry("600x700")
         self.etapas = []
         self.logo_path = None
 
@@ -54,6 +62,14 @@ class GeradorInstrucaoTrabalho(tk.Tk):
         tk.Label(self.frame_principal, text="Nome do Procedimento:", font=("Arial", 12)).pack()
         self.nome_procedimento = tk.Entry(self.frame_principal, font=("Arial", 12), width=40)
         self.nome_procedimento.pack(pady=5)
+
+        tk.Label(self.frame_principal, text="Versão do Procedimento:", font=("Arial", 12)).pack()
+        self.versao_procedimento = tk.Entry(self.frame_principal, font=("Arial", 12), width=40)
+        self.versao_procedimento.pack(pady=5)
+
+        tk.Label(self.frame_principal, text="Responsável pelo Procedimento:", font=("Arial", 12)).pack()
+        self.responsavel_procedimento = tk.Entry(self.frame_principal, font=("Arial", 12), width=40)
+        self.responsavel_procedimento.pack(pady=5)
 
         tk.Label(self.frame_principal, text="Ferramentas Utilizadas:", font=("Arial", 12)).pack()
         self.ferramentas_utilizadas = tk.Entry(self.frame_principal, font=("Arial", 12), width=40)
@@ -98,11 +114,14 @@ class GeradorInstrucaoTrabalho(tk.Tk):
             return
 
         pdf = PDFGenerator()
+        pdf.alias_nb_pages()
         pdf.add_page()
         pdf.add_procedure_info(
             self.nome_procedimento.get(),
+            self.versao_procedimento.get(),
             self.ferramentas_utilizadas.get(),
-            self.epis_utilizados.get()
+            self.epis_utilizados.get(),
+            self.responsavel_procedimento.get()
         )
 
         for idx, etapa in enumerate(self.etapas, 1):
@@ -111,7 +130,6 @@ class GeradorInstrucaoTrabalho(tk.Tk):
         output_path = os.path.join(os.getcwd(), f"{self.nome_procedimento.get()}.pdf")
         pdf.output(output_path)
         messagebox.showinfo("Sucesso", f"PDF '{output_path}' gerado com sucesso!")
-
 
 class JanelaEtapa(tk.Toplevel):
     def __init__(self, parent):
