@@ -7,14 +7,16 @@ import os
 
 class PDFGenerator(FPDF):
     def header(self):
-        if app.logo_path:
-            self.image(app.logo_path, x=10, y=8, w=30)  # Logo da empresa
-        self.set_font("Arial", "B", 14)
-        self.cell(0, 10, "Instrução de Trabalho (IT)", border=0, ln=True, align="C")
-        self.set_font("Arial", "B", 12)
-        self.cell(0, 10, f"Procedimento: {app.nome_procedimento.get()}", border=0, ln=True, align="C")
-        self.cell(0, 10, f"Versão: {app.versao_procedimento.get()} | Data de Emissão: {datetime.now().strftime('%d/%m/%Y')}", border=0, ln=True, align="C")
-        self.ln(10)
+        """Cabeçalho apenas na primeira página."""
+        if self.page_no() == 1:  # Verifica se está na primeira página
+            if app.logo_path:
+                self.image(app.logo_path, x=10, y=8, w=30)  # Logo da empresa
+            self.set_font("Arial", "B", 14)
+            self.cell(0, 10, "Instrução de Trabalho (IT)", border=0, ln=True, align="C")
+            self.set_font("Arial", "B", 12)
+            self.cell(0, 10, f"Procedimento: {app.nome_procedimento.get()}", border=0, ln=True, align="C")
+            self.cell(0, 10, f"Versão: {app.versao_procedimento.get()} | Data de Emissão: {datetime.now().strftime('%d/%m/%Y')}", border=0, ln=True, align="C")
+            self.ln(10)
 
     def footer(self):
         self.set_y(-15)
@@ -38,13 +40,39 @@ class PDFGenerator(FPDF):
         self.ln(5)
 
     def add_stage(self, stage_number, stage_title, stage_description, stage_image):
+        """Adiciona uma etapa ao PDF."""
+        # Verifica se há espaço suficiente para adicionar a etapa
+        required_space = 100  # Ajuste conforme necessário
+        if self.get_y() + required_space > 280:  # 280 é o limite antes de criar nova página
+            self.add_page()
+
+        # Adicionar título da etapa
         self.set_font("Arial", "B", 12)
         self.cell(0, 10, f"Etapa {stage_number}: {stage_title}", ln=True, border=1)
         self.ln(5)
+
+        # Configurar área de texto e imagem em colunas
         self.set_font("Arial", size=12)
-        self.multi_cell(0, 10, stage_description, border=1)
+        text_width = 110  # Largura da área de texto
+        image_width = 70  # Largura da imagem
+
+        y_start = self.get_y()  # Posição inicial da etapa
+
+        # Adicionar descrição na coluna esquerda
+        self.multi_cell(text_width, 10, stage_description, border=1)
+
+        # Adicionar imagem na coluna direita, se existir
         if stage_image:
-            self.image(stage_image, x=10, y=self.get_y(), w=180)
+            x_image = 10 + text_width + 5  # Posição horizontal da imagem
+            y_image = y_start  # A imagem começa na mesma posição vertical que o texto
+            self.image(stage_image, x=x_image, y=y_image, w=image_width)
+
+        # Ajustar a posição para a próxima etapa
+        current_y = self.get_y()
+        image_end_y = y_image + (image_width * 1.5) if stage_image else 0  # Altura final da imagem, se existir
+
+        # Move para o próximo espaço considerando a maior altura (texto ou imagem)
+        self.set_y(max(current_y, image_end_y))
         self.ln(10)
 
 class GeradorInstrucaoTrabalho(tk.Tk):
